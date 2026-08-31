@@ -14,6 +14,7 @@ restricted here), so below we provide BOTH:
      access to Hugging Face. Swap back to #1 in your own environment -
      the rest of the pipeline (FAISS, retrieval, prompting) doesn't change
      AT ALL. That's the point of separating embedding from retrieval.
+     this is the entire work
 """
 import numpy as np
 import faiss
