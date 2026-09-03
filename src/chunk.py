@@ -11,7 +11,7 @@ merging text across pages) so that "source page" stays a single, honest
 number instead of a range.
 """
 from dataclasses import dataclass
-from src.extract import PageDoc
+from extract import PageDoc
 
 
 @dataclass

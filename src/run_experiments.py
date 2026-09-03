@@ -1,7 +1,7 @@
-from src.extract import extract_pdfs
-from documents.chunk import chunk_pages
-from src.embed_store import TfidfEmbedder, build_store
-from src.rag import answer_question
+from extract import extract_pdfs
+from chunk import chunk_pages
+from embed_store import SentenceTransformerEmbedder,build_store
+from rag import answer_question
 
 
 def section(title):
@@ -19,9 +19,9 @@ query = "How often should the spindle be lubricated?"
 
 for size in (300, 800):
     chunks = chunk_pages(pages, chunk_size=size, overlap=50)
-    embedder = TfidfEmbedder()
+    embedder = SentenceTransformerEmbedder()
     store = build_store(chunks, embedder)
-    result = answer_question(query, store, embedder, top_k=3, use_llm=False)
+    result = answer_question(query, store, embedder, top_k=3, use_llm=True)
     print(f"\n--- chunk_size={size} ({len(chunks)} total chunks) ---")
     print("Query:", query)
     for src, page, score in result["sources"]:
@@ -33,7 +33,7 @@ for size in (300, 800):
 section("EXPERIMENT B: top_k 3 vs 5 vs 10")
 # -----------------------------------------------------------------------
 chunks = chunk_pages(pages, chunk_size=500, overlap=50)
-embedder = TfidfEmbedder()
+embedder = SentenceTransformerEmbedder()
 store = build_store(chunks, embedder)
 query2 = "What is the acceptance criteria for incoming material inspection?"
 
