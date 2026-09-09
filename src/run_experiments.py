@@ -6,6 +6,8 @@ from transformers import AutoTokenizer , AutoModelForCausalLM, BitsAndBytesConfi
 import torch
 from google import genai
 import time
+from keyword_search import BM25Retriever
+from rag import compare_retrievers
 
 
 def section(title):
@@ -18,33 +20,6 @@ pages = extract_pdfs("documents")
 
 client = genai.Client()
 
-# model_name = "Qwen/Qwen2.5-7B-Instruct"
-# quant_config = BitsAndBytesConfig(
-#     load_in_4bit=True,
-#     bnb_4bit_quant_type="nf4",
-#     bnb_4bit_compute_dtype=torch.float16,
-#     bnb_4bit_use_double_quant=True,
-# )
-
-# print("[rag] Loading tokenizer for", model_name)
-# try:
-#         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-# except Exception as e:
-#         print(f"[rag] Tokenizer load failed: {e}")
-#         raise
-
-# print("[rag] Loading model for", model_name)
-# try:
-#         llm_model = AutoModelForCausalLM.from_pretrained(
-#             model_name,
-#             dtype = torch.float16 if torch.cuda.is_available() else torch.float32,
-#             quantization_config=quant_config,
-#             device_map = "cuda",
-#             trust_remote_code=True
-#         )
-# except Exception as e:
-#         print(f"[rag] Model load failed: {e}")
-#         raise
 
 # # -----------------------------------------------------------------------
 # section("EXPERIMENT A: chunk_size 300 vs 800")
@@ -70,6 +45,8 @@ client = genai.Client()
 chunks = chunk_pages(pages, chunk_size=500, overlap=50)
 embedder = SentenceTransformerEmbedder()
 store = build_store(chunks, embedder)
+
+bm25 = BM25Retriever(chunks)
 # query2 = "What is the insurance policy you have in your company and number and usage?"
 
 # for k in (3, 5, 10):
@@ -80,22 +57,71 @@ store = build_store(chunks, embedder)
 #         print(f"   {score:.3f}  {c.source} p.{c.page_num}  \"{c.text[:60].strip()}...\"")
 
 # -----------------------------------------------------------------------
-section("EXPERIMENT C: question with NO answer in the documents")
-# -----------------------------------------------------------------------
-query3 = "What is rag and computer vision and difference?"
-result = answer_question(query3, store, embedder, top_k=3, use_gemini_llm=True, client=client)
-print("Query:", query3)
-print("Top match score:", result["sources"][0][2] if result["sources"] else None)
-print("Response with grounding guard:", result["answer"])
+# section("EXPERIMENT C: question with NO answer in the documents")
+# # -----------------------------------------------------------------------
+# query3 = "Use of 04066274205 number and what is this for?"
+# result = answer_question(query3, store, embedder, top_k=3, use_gemini_llm=True, client=client)
+# print("Query:", query3)
+# print("Top match score:", result["sources"][0][2] if result["sources"] else None)
+# print("Response with grounding guard:", result["answer"])
+
+test_queries = [
+    "What is the use of 575758 sms number?",
+    "Do you know anything about the number 575758?",
+    "How can I track my claim?",
+    "How do I track claim status?",
+    "What application can be used for claim tracking?",
+]
+
+compare_retrievers(test_queries, store, bm25, embedder, top_k=5)
+
+
+# query4 = "Do you know anything about the number 575758?"
+# query4 = "What is the use of 575758 sms number?"
+# for que in test_queries:
+#     query4 = que
+
+#     search = "bm25"  # or "semantic"
+
+#     result = answer_question(query4, store,bm25, embedder, top_k=5, use_gemini_llm=True, search=search, client=client)
+#     print("Query:", query4)
+#     print("Answer (extractive, top match):")
+#     print(" ", result["answer"][:300].replace("\n", " "))
+#     print("\nSources returned to user:")
+#     for src, page,text, score in result["sources"]:
+#         print(f"   - {src}, page {page} (similarity {score})")
+        # print("     snippet:", text)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # -----------------------------------------------------------------------
-section("EXPERIMENT D: which document and page did this come from?")
-# -----------------------------------------------------------------------
-query4 = "If an employee joined company , any evaluation process after some months are there and how?"
-result = answer_question(query4, store, embedder, top_k=3, use_gemini_llm=True, client=client)
-print("Query:", query4)
-print("Answer (extractive, top match):")
-print(" ", result["answer"][:300].replace("\n", " "))
-print("\nSources returned to user:")
-for src, page, score in result["sources"]:
-    print(f"   - {src}, page {page} (similarity {score})")
+# section("EXPERIMENT D: which document and page did this come from?")
+# # # -----------------------------------------------------------------------
+# # query4 = "If an employee joined company , any evaluation process after some months are there and how?"
+
+# query4 = "What is the use of 575758 sms number?"
+
+# result = answer_question(query4, store, embedder, top_k=3, use_gemini_llm=True, client=client)
+# print("Query:", query4)
+# print("Answer (extractive, top match):")
+# print(" ", result["answer"][:300].replace("\n", " "))
+# print("\nSources returned to user:")
+# for src, page,text, score in result["sources"]:
+#     print(f"   - {src}, page {page} (similarity {score})")
+#     print("     snippet:", text)

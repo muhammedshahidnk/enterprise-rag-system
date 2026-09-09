@@ -9,7 +9,6 @@ the same regardless of which LLM answers.
 import time
 
 
-
 PROMPT_TEMPLATE = """You are a technical assistant answering questions using ONLY the
 context provided below, which comes from internal technical documents.
 
@@ -149,9 +148,25 @@ def extractive_fallback(retrieved: list[tuple], threshold: float = 0.15) -> str:
 
 # def answer_question(question: str, store, embedder, top_k: int = 5, use_hug_llm: bool = True, llm_model=None, tokenizer=None) -> dict:
 
-def answer_question(question: str, store, embedder, top_k: int = 5, use_gemini_llm: bool = True, client=None) -> dict:
-    q_vec = embedder.encode([question])[0]
-    retrieved = store.search(q_vec, top_k=top_k)
+def answer_question(question: str, store,bm25, embedder, top_k: int = 5, use_gemini_llm: bool = True,search=None , client=None) -> dict:
+
+    if search=="semantic":
+        print("Using semantic search")
+        q_vec = embedder.encode([question])[0]
+        retrieved = store.search(q_vec, top_k=top_k)
+
+        print("Retrieved chunks:")
+        for c, score in retrieved:
+            print(f"  - {c.source}, page {c.page_num} (similarity {score})")
+
+    else:
+        print("Using BM25 search")
+        results = bm25.search(question, top_k=5)
+        retrieved = [(result["chunk"], result["score"]) for result in results]
+
+        print("Retrieved chunks:")
+        for c, score in retrieved:
+            print(f"  - {c.source}, page {c.page_num} (BM25 score {score})")
 
     context = build_context(retrieved)
     prompt = PROMPT_TEMPLATE.format(context=context, question=question)
@@ -168,5 +183,101 @@ def answer_question(question: str, store, embedder, top_k: int = 5, use_gemini_l
         print("Using extractive fallback (no LLM call)...---------------------------------------------------")
         answer = extractive_fallback(retrieved)
 
-    sources = [(c.source, c.page_num, round(score, 3)) for c, score in retrieved]
+    sources = [(c.source, c.page_num, c.text, round(score, 3)) for c, score in retrieved]
     return {"question": question, "answer": answer, "sources": sources, "prompt": prompt}
+
+
+def compare_retrievers(
+    queries,
+    store,
+    bm25,
+    embedder,
+    top_k=5
+):
+    """
+    Compare FAISS semantic retrieval and BM25 retrieval
+    using the same set of queries.
+
+    No LLM is called here.
+    This function evaluates retrieval only.
+    """
+
+    for query in queries:
+
+        print("\n" + "=" * 100)
+        print(f"QUERY: {query}")
+        print("=" * 100)
+
+        # ==========================================================
+        # 1. FAISS / Semantic Search
+        # ==========================================================
+
+        print("\n--- FAISS / SEMANTIC SEARCH ---")
+
+        start_time = time.perf_counter()
+
+        q_vec = embedder.encode([query])[0]
+        semantic_results = store.search(
+            q_vec,
+            top_k=top_k
+        )
+
+        semantic_time = time.perf_counter() - start_time
+
+        for rank, (chunk, score) in enumerate(
+            semantic_results,
+            start=1
+        ):
+            print(
+                f"\nRank {rank} | "
+                f"Score: {score:.4f}"
+            )
+
+            print(
+                f"Source: {chunk.source} | "
+                f"Page: {chunk.page_num}"
+            )
+
+            print(
+                f"Text: {chunk.text[:300].replace(chr(10), ' ')}..."
+            )
+
+        print(f"\nFAISS retrieval time: {semantic_time:.4f}s")
+
+        # ==========================================================
+        # 2. BM25 Search
+        # ==========================================================
+
+        print("\n--- BM25 SEARCH ---")
+
+        start_time = time.perf_counter()
+
+        bm25_results = bm25.search(
+            query,
+            top_k=top_k
+        )
+
+        bm25_time = time.perf_counter() - start_time
+
+        for rank, result in enumerate(
+            bm25_results,
+            start=1
+        ):
+            chunk = result["chunk"]
+            score = result["score"]
+
+            print(
+                f"\nRank {rank} | "
+                f"Score: {score:.4f}"
+            )
+
+            print(
+                f"Source: {chunk.source} | "
+                f"Page: {chunk.page_num}"
+            )
+
+            print(
+                f"Text: {chunk.text[:300].replace(chr(10), ' ')}..."
+            )
+
+        print(f"\nBM25 retrieval time: {bm25_time:.4f}s")
