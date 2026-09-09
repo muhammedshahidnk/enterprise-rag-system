@@ -39,13 +39,23 @@ def chunk_pages(pages: list[PageDoc], chunk_size: int = 500, overlap: int = 50) 
                 chunks.append(Chunk(page.source, page.page_num, cid, piece))
                 cid += 1
             start += chunk_size - overlap  # move forward with overlap
+
+        # print("------chunks-----------", chunks)  
+
+    # print(type(chunks[0]))
+    # print(chunks[0])
+    # print("chunks",chunks)
     return chunks
 
 
 if __name__ == "__main__":
-    from src.extract import extract_pdfs
+    from extract import extract_pdfs
     pages = extract_pdfs("documents")
-    for size in (300, 800):
-        chunks = chunk_pages(pages, chunk_size=size, overlap=50)
-        avg_len = sum(len(c.text) for c in chunks) / len(chunks)
-        print(f"chunk_size={size}: {len(chunks)} chunks, avg length {avg_len:.0f} chars")
+
+    print(f"Extracted {len(pages)} pages from PDFs\n", type(pages))
+
+    # for size in (800):
+    size = 800
+    chunks = chunk_pages(pages, chunk_size=size, overlap=50)
+    avg_len = sum(len(c.text) for c in chunks) / len(chunks)
+    print(f"chunk_size={size}: {len(chunks)} chunks, avg length {avg_len:.0f} chars")
