@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-rag"
+version = "0.1.0"
+description = "Document retrieval and grounded question answering system"
+requires-python = ">=3.10"
+dependencies = [
+    "faiss-cpu",
+    "google-genai",
+    "numpy",
+    "pypdf",
+    "pyyaml",
+    "rank-bm25",
+    "sentence-transformers",
+]
+
+[project.scripts]
+evaluate-bm25 = "enterprise_rag.cli:evaluate_bm25_command"
+
+[tool.setuptools.packages.find]
+where = ["src"]
